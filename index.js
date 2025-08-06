@@ -23,7 +23,7 @@ const str_random = randomStr.generate();
 
 const rawdata_users = fs.readFileSync(path.join(__dirname, 'users.json'));
 const data = JSON.parse(rawdata_users);
-
+console.log(data);
 
 app.use(
     session({
