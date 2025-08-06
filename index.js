@@ -7,8 +7,7 @@ const session = require("express-session");
 const randomStr = require("randomstring");
 const mongodb = require('mongodb');
 
-const connection_string = "your-mongodb-connection-string";
-const client = new mongodb.MongoClient(connection_string);
+const connection_string = "mongodb+srv://mgemmink:gemmink1@lab3cluster.fddoo4b.mongodb.net/?retryWrites=true&w=majority&appName=Lab3Cluster";const client = new mongodb.MongoClient(connection_string);
 let database;
 const app = express();
 
@@ -24,7 +23,7 @@ app.set('view engine', '.hbs');
 app.set('views', path.join(__dirname, '../views'));
 
 // JSON users
-const rawdata_users = fs.readFileSync(path.join(__dirname, '../users.json'));
+const rawdata_users = fs.readFileSync(path.join(__dirname, './users.json'));
 const data = JSON.parse(rawdata_users);
 
 // Session setup
