@@ -24,7 +24,12 @@ const str_random = randomStr.generate();
 const rawdata_users = fs.readFileSync('./users.json');
 const data = JSON.parse(rawdata_users);
 
-
+async function initDB() {
+    if (!database) {
+        await client.connect();
+        database = client.db("db_library_assignment");
+    }
+}
 app.use(
     session({
         name: 'mySession',          // ≈ cookieName
@@ -53,6 +58,7 @@ app.get('/log_out',
     }
 );
 app.get('/sign_in', async (req, res) => {
+    await initDB();
     console.log(req.session);
     if (req.session.user !== undefined) {
         const user = await database.collection('users').findOne(
@@ -98,6 +104,7 @@ app.post('/submit', (req, res) => {
 )
 
 app.post('/return_books', async (req, res) => {
+    await initDB();
     if(req.session.user !== undefined) {
     try {
         let book_id = req.body.return_books;
@@ -123,18 +130,10 @@ app.post('/return_books', async (req, res) => {
         res.redirect('/sign_in',);
     }
 })
-
-async function main() {
-    try {
-        await client.connect();  // Connect to MongoDB
-        database = client.db("db_library_assignment");
-        const borrowRouter = require('./middleware/borrow_books')(database);
-        app.use('/borrow_books', borrowRouter);
-
-    } catch (err) {
-        console.error("Failure");
-        process.exit(1);
-    }
-}
-main()
+(async () => {
+    await initDB();
+    const borrowRouter = require('./middleware/borrow_books')(database);
+    app.use('/borrow_books', borrowRouter);
+})();
+app.use('/borrow_books', borrowRouter);
 module.exports.handler = serverless(app);
