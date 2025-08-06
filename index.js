@@ -48,11 +48,9 @@ app.use(async (req, res, next) => {
         if (!database) {
             await client.connect();
             database = client.db("db_library_assignment");
-            // The borrow_books middleware now needs to be available after the DB connection
             const borrowRouter = require('./middleware/borrow_books')(database);
             app.use('/borrow_books', borrowRouter);
         }
-        // Make the database object available to all routes
         req.db = database;
         next();
     } catch (err) {
@@ -60,7 +58,13 @@ app.use(async (req, res, next) => {
         res.status(500).send("Internal Server Error");
     }
 });
-
+app.get('/log_out',
+    (req, res) => {
+        req.session.destroy(() => {
+            res.redirect('/');
+        });
+    }
+);
 
 
 
@@ -93,7 +97,7 @@ app.get('/sign_in', async (req, res) => {
         }
     } else if (req.session.message !== undefined) {
         const message = req.session.message;
-        req.session.message = undefined; // Clear the message after showing it once
+        req.session.message = undefined;
         res.render("sign_in", {"message": message});
     } else {
         res.render("sign_in", {});
