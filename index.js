@@ -123,7 +123,7 @@ app.post('/return_books', async (req, res) => {
         res.redirect('/sign_in',);
     }
 })
-/*
+
 async function main() {
     try {
         await client.connect();  // Connect to MongoDB
@@ -138,24 +138,7 @@ async function main() {
         console.error("Failure");
         process.exit(1);
     }
-}*/
-
-
-
-app.use(async (req, res, next) => {
-    try {
-        if (!database) {
-            await client.connect();
-            database = client.db("db_library_assignment");
-            const borrowRouter = require('./middleware/borrow_books')(database);
-            app.use('/borrow_books', borrowRouter);
-        }
-        req.db = database; // Make db available on the request object
-        next();
-    } catch (err) {
-        console.error("Database connection error:", err);
-        res.status(500).send("Internal Server Error");
-    }
-});
-
+}
+main()
 module.exports = app;
+module.exports.handler = serverless(app);
