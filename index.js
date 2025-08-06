@@ -3,7 +3,7 @@ const handlebars = require("express-handlebars");
 const app = express();
 const path = require('path');
 const fs = require('fs');
-
+const serverless = require('serverless-http');
 
 const session = require("express-session");
 const port = 3000;
@@ -137,5 +137,4 @@ async function main() {
     }
 }
 main()
-module.exports = app;
 module.exports.handler = serverless(app);
