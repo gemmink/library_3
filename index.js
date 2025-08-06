@@ -14,6 +14,9 @@ const client = new mongodb.MongoClient(connection_string);
 
 let database;
 
+
+
+
 app.use(express.urlencoded({extended: true}));
 app.engine('.hbs', handlebars.engine({extname: '.hbs',partialsDir: path.join(__dirname, 'views', 'partials')},
     ));
@@ -144,6 +147,12 @@ app.post('/return_books', async (req, res) => {
         res.redirect('/sign_in');
     }
 });
+
+
+
+app.get('/', async (req, res) => {
+    res.render("landing");
+})
 
 module.exports = app;
 
