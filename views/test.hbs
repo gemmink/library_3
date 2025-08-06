@@ -1,0 +1,63 @@
+
+
+<a href="./log_out" style="float:right;position:absolute;top:0;right:0;margin:20px;">Log out</a>
+<h4>Available Books</h4>
+<form action="/borrow_books" method="POST">
+{{#each books}}
+    <div>
+
+        {{#if available}}
+        <input type="checkbox" id="{{ID}}" value="{{ID}}" name="borrow_books" class="borrow_books">
+            <label for="{{ID}}"> {{Title}} by {{Author}}</label>
+        {{/if}}
+</div>
+{{/each}}
+    <button type="submit" id="borrow_button" disabled>Borrow</button>
+
+</form>
+<form action="/return_books" method="POST">
+<div class="message" style="float:right;">Welcome {{user}}<br/>
+    {{#each books}}
+    {{#unless available}}
+        <div>
+    <input type="checkbox" id="{{ID}}" value="{{ID}}" name="return_books" class="return_books">
+    <label for="{{ID}}"> {{Title}} by {{Author}}</label>
+        </div>
+    {{/unless}}
+    {{/each}}
+
+    <button id="return_button" type="submit" disabled>Return</button>
+</div>
+</form>
+
+
+<script>
+    console.log("yes");
+
+    function button_hide(group,button_name)
+    {
+
+        const check = document.querySelectorAll(group);
+        console.log(check);
+        const button = document.getElementById(button_name);
+        function checkstate() {
+            let any_checked = false;
+            for(let i = 0;i<check.length;i++)
+            {
+                if(check[i].checked)
+                {
+                    any_checked = true;
+                }
+            }
+            button.disabled = !any_checked;
+        }
+        for(let i = 0;i<check.length;i++)
+        {
+            check[i].addEventListener('change', checkstate);
+            console.log("yes");
+        }
+    }
+    button_hide(".return_books","return_button");
+    button_hide(".borrow_books","borrow_button");
+
+</script>
