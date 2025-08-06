@@ -27,8 +27,8 @@ console.log(data);
 
 app.use(
     session({
-        name: 'mySession',          // ≈ cookieName
-        secret: str_random,         // same as before
+        name: 'mySession',
+        secret: str_random,
         saveUninitialized: false,
         resave: false,
         rolling: true,
@@ -40,101 +40,110 @@ app.use(
         }
     })
 );
-
-app.get('/', async (req, res) => {
-    res.render("landing");
-})
-
-app.get('/log_out',
-    (req, res) => {
-        req.session.destroy(() => {
-            res.redirect('/');
-        });
+app.use(async (req, res, next) => {
+    try {
+        if (!database) {
+            await client.connect();
+            database = client.db("db_library_assignment");
+            // The borrow_books middleware now needs to be available after the DB connection
+            const borrowRouter = require('./middleware/borrow_books')(database);
+            app.use('/borrow_books', borrowRouter);
+        }
+        // Make the database object available to all routes
+        req.db = database;
+        next();
+    } catch (err) {
+        console.error("Database connection failed", err);
+        res.status(500).send("Internal Server Error");
     }
-);
-app.get('/sign_in', async (req, res) => {
-    console.log(req.session);
-    if (req.session.user !== undefined) {
-        const user = await database.collection('users').findOne(
-            { Username: req.session.user},
-            { projection: { IDBooksBorrowed: 1, _id: 0 } }
-        );
-        const userIDs = user?.IDBooksBorrowed || [];
-        const rows = await database.collection('books').find({
-            $or: [
-                { Available: true },
-                { ID: { $in: userIDs } }
-            ]
-        }, {
-            projection: { _id: 0, ID: 1, Title: 1, Author: 1, Available: 1 }
-        }).sort({ Title: 1 }).toArray();
+});
 
-        res.render('home', {user: req.session.user, books: rows});
+
+
+
+
+
+
+
+
+app.get('/sign_in', async (req, res) => {
+    if (req.session.user !== undefined) {
+        try {
+            const user = await req.db.collection('users').findOne(
+                { Username: req.session.user},
+                { projection: { IDBooksBorrowed: 1, _id: 0 } }
+            );
+            const userIDs = user?.IDBooksBorrowed || [];
+            const rows = await req.db.collection('books').find({
+                $or: [
+                    { Available: true },
+                    { ID: { $in: userIDs } }
+                ]
+            }, {
+                projection: { _id: 0, ID: 1, Title: 1, Author: 1, Available: 1 }
+            }).sort({ Title: 1 }).toArray();
+
+            return res.render('home', {user: req.session.user, books: rows});
+        } catch (err) {
+            console.error("Error fetching user books:", err);
+            return res.status(500).send("Error loading your page.");
+        }
     } else if (req.session.message !== undefined) {
-        res.render("sign_in", {"message": req.session.message});
-        req.session.message = undefined;
+        const message = req.session.message;
+        req.session.message = undefined; // Clear the message after showing it once
+        res.render("sign_in", {"message": message});
     } else {
         res.render("sign_in", {});
     }
 });
+
 app.post('/submit', (req, res) => {
-        console.log(req.body);
-        const username = req.body.user;
-        const password = req.body.pass;
-        if (username in data) {
-            if (password == data[username]) {
-                req.session.user = username;
-                res.redirect('/sign_in');
-            } else {
-                req.session.message = "Not a valid password";
-                res.redirect('/sign_in');
-            }
-            console.log("user in");
-        } else {
-            req.session.message = "Not a valid username";
-            res.redirect('/sign_in',);
-        }
+    const username = req.body.user;
+    const password = req.body.pass;
+
+    if (data[username] && password == data[username]) {
+        req.session.user = username;
+        res.redirect('/sign_in');
+    } else if (data[username]) {
+        req.session.message = "Not a valid password";
+        res.redirect('/sign_in');
+    } else {
+        req.session.message = "Not a valid username";
+        res.redirect('/sign_in');
     }
-)
+});
 
 app.post('/return_books', async (req, res) => {
-    if(req.session.user !== undefined) {
+    if (!req.session.user) {
+        return res.redirect('/sign_in');
+    }
     try {
         let book_id = req.body.return_books;
-        console.log(book_id);
-        if (Array.isArray(book_id)===false) {
+        if (!book_id) {
+            return res.redirect('/sign_in');
+        }
+
+        if (!Array.isArray(book_id)) {
             book_id = [book_id];
         }
-        book_id = book_id.map(i=>parseInt(i))
-        const result = await database.collection('books').updateMany(
-            {ID: {$in: book_id}},
-            {$set: {Available: true}}
+        const bookIdsAsInt = book_id.map(i => parseInt(i));
+
+        await req.db.collection('books').updateMany(
+            { ID: { $in: bookIdsAsInt } },
+            { $set: { Available: true } }
         );
-        console.log(typeof book_id)
-        await database.collection('users').updateOne(
+
+        await req.db.collection('users').updateOne(
             { Username: req.session.user },
-            { $pull: { IDBooksBorrowed: { $in: book_id } } }
-        )
-        res.redirect('/sign_in',);
-    }
-    catch(err)
-    {console.log("error");}}
-    else{
-        res.redirect('/sign_in',);
-    }
-})
+            { $pull: { IDBooksBorrowed: { $in: bookIdsAsInt } } }
+        );
 
-async function main() {
-    try {
-        await client.connect();  // Connect to MongoDB
-        database = client.db("db_library_assignment");
-        const borrowRouter = require('./middleware/borrow_books')(database);
-        app.use('/borrow_books', borrowRouter);
-
-    } catch (err) {
-        console.error("Failure");
-        process.exit(1);
+        res.redirect('/sign_in');
+    } catch(err) {
+        console.error("Error returning books:", err);
+        res.redirect('/sign_in');
     }
-}
-main()
-module.exports.handler = serverless(app);
+});
+
+module.exports = app;
+
